@@ -1,7 +1,7 @@
 import streamlit as st
 
 # import altair as alt
-# import plotly.express as px
+import plotly.express as px
 
 import numpy as np
 import pandas as pd
@@ -105,6 +105,8 @@ def getpricingdata():
 
 
 prices = getpricingdata()
+
+st.markdown('Data source: '+'https://www.aemo.com.au/energy-systems/electricity/national-electricity-market-nem/data-nem/market-data-nemweb')
 
 period = st.slider('Select period',2009,2021,(2009,2021),1)
 
