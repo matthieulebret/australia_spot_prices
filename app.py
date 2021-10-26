@@ -1,6 +1,8 @@
 import streamlit as st
 
-# import altair as alt
+import altair as alt
+
+
 # import plotly.express as px
 
 import numpy as np
@@ -112,11 +114,34 @@ period = st.slider('Select period',2009,2021,(2009,2021),1)
 
 
 prices = prices[(prices['Year']>=float(period[0]))&(prices['Year']<=float(period[1]))]
+
+
+###### Filter prices ######
+
+regionlist = ['QLD1','SA1','TAS1','NSW1','VIC1']
+
+region = st.selectbox('Select State',regionlist,0)
+
+regionfilter = prices[prices['State']==region]
+
+highlight = alt.selection(type='interval',bind='scales',encodings=['x','y'])
+
+fig = alt.Chart(regionfilter).mark_bar().encode(alt.X('Price:Q',scale=alt.Scale(domain=(-100,200)),bin=alt.BinParams(maxbins=5000)),alt.Y('count()'),color='State:N',tooltip=[
+      {"type": "quantitative", "field": "Price"},
+      {"type": "nominal", "field": "State"}]).add_selection(highlight)
+st.altair_chart(fig,use_container_width=True)
+
+
+###### End Filter prices ####
+
 prices = prices.pivot_table(index='Time',columns='State',values='Price')
+
+
 
 distrib = prices.describe([0.01,0.025,0.05,0.1,0.25,0.3,0.4,0.5,0.6,0.75,0.9,0.95,0.975,0.99])
 
 st.write(distrib)
+
 
 def convert_df(df):
     return df.to_csv().encode('utf-8')
