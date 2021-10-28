@@ -10,7 +10,7 @@ import pandas as pd
 import datetime as dt
 import time
 import calendar
-from datetime import date, timedelta
+from datetime import date, timedelta,time
 import xlrd
 import openpyxl
 
@@ -91,7 +91,7 @@ path = 'C:/Users/matth/Documents/pythonprograms/Electricity_Prices/prices/'
 # df.compute().to_csv(path+'prices_data.csv',mode='a')
 #
 
-@st.cache(suppress_st_warning=True)
+@st.cache(suppress_st_warning=True,allow_output_mutation=True)
 def getpricingdata():
     # prices = pd.read_csv(path+'prices_data.csv')
     prices = pd.read_csv('prices_data.zip')
@@ -103,6 +103,7 @@ def getpricingdata():
     prices['Time'] = pd.to_datetime(prices['Time'],errors='coerce')
     prices = prices.sort_values('Time',ascending=False)
     prices['Year'] = pd.DataFrame(prices['Time']).apply(lambda x: x.dt.year)
+    prices['Time of Day'] = prices['Time'].dt.strftime('%H:%M')
     return prices
 
 
@@ -110,11 +111,20 @@ prices = getpricingdata()
 
 st.markdown('Data source: '+'https://www.aemo.com.au/energy-systems/electricity/national-electricity-market-nem/data-nem/market-data-nemweb')
 
-period = st.slider('Select period',2009,2021,(2009,2021),1)
+with st.form(key='my_form'):
+    period = st.slider('Select period',2009,2021,(2019,2021),1)
+    timeinterval = st.slider('Select time interval',time(0,0),time(23,59),value=(time(8,0),time(18,00)),step=timedelta(minutes=30))
+    st.form_submit_button('Submit')
 
 
-prices = prices[(prices['Year']>=float(period[0]))&(prices['Year']<=float(period[1]))]
+@st.cache(suppress_st_warning=True,allow_output_mutation=True)
+def filteryeartime(df):
+    df = df[(df['Year']>=float(period[0]))&(df['Year']<=float(period[1]))]
+    df = df.set_index(pd.DatetimeIndex(df['Time of Day']))
+    df = df.between_time(timeinterval[0],timeinterval[1])
+    return df
 
+prices = filteryeartime(prices)
 
 ###### Filter prices ######
 
@@ -126,7 +136,7 @@ regionfilter = prices[prices['State']==region]
 
 highlight = alt.selection(type='interval',bind='scales',encodings=['x','y'])
 
-fig = alt.Chart(regionfilter).mark_bar().encode(alt.X('Price:Q',scale=alt.Scale(domain=(-100,200)),bin=alt.BinParams(maxbins=5000)),alt.Y('count()'),color='State:N',tooltip=[
+fig = alt.Chart(regionfilter).mark_bar().encode(alt.X('Price:Q',scale=alt.Scale(domain=(-100,200)),bin=alt.BinParams(maxbins=2000)),alt.Y('count()'),color='State:N',tooltip=[
       {"type": "quantitative", "field": "Price"},
       {"type": "nominal", "field": "State"}]).add_selection(highlight)
 st.altair_chart(fig,use_container_width=True)
@@ -137,8 +147,17 @@ st.altair_chart(fig,use_container_width=True)
 prices = prices.pivot_table(index='Time',columns='State',values='Price')
 
 
+st.header('Negative price proportion')
+
+negatives = pd.DataFrame(prices.where(prices<0).count()/prices.count())
+
+
+st.write(negatives.style.format('{:.2%}'))
+
 
 distrib = prices.describe([0.01,0.025,0.05,0.1,0.25,0.3,0.4,0.5,0.6,0.75,0.9,0.95,0.975,0.99])
+
+st.header('Price distribution')
 
 st.write(distrib)
 
