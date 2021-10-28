@@ -113,15 +113,17 @@ st.markdown('Data source: '+'https://www.aemo.com.au/energy-systems/electricity/
 
 with st.form(key='my_form'):
     period = st.slider('Select period',2009,2021,(2019,2021),1)
-    timeinterval = st.slider('Select time interval',time(0,0),time(23,59),value=(time(8,0),time(18,00)),step=timedelta(minutes=30))
+    daytime = st.checkbox('Daytime only 8:00 to 18:00')
+    # timeinterval = st.slider('Select time interval',time(0,0),time(23,59),value=(time(8,0),time(18,00)),step=timedelta(minutes=30))
     st.form_submit_button('Submit')
 
 
 @st.cache(suppress_st_warning=True,allow_output_mutation=True)
 def filteryeartime(df):
     df = df[(df['Year']>=float(period[0]))&(df['Year']<=float(period[1]))]
-    df = df.set_index(pd.DatetimeIndex(df['Time of Day']))
-    df = df.between_time(timeinterval[0],timeinterval[1])
+    if daytime:
+        df = df.set_index(pd.DatetimeIndex(df['Time of Day']))
+        df = df.between_time(time(8,0),time(18,0))
     return df
 
 prices = filteryeartime(prices)
