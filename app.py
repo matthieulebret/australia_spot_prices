@@ -149,7 +149,7 @@ st.altair_chart(fig,use_container_width=True)
 prices = prices.pivot_table(index='Time',columns='State',values='Price')
 
 
-st.header('Negative price proportion')
+st.header('Proportion of negative price intervals')
 
 negatives = pd.DataFrame(prices.where(prices<0).count()/prices.count())
 
