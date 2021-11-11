@@ -91,6 +91,7 @@ path = 'C:/Users/matth/Documents/pythonprograms/Electricity_Prices/prices/'
 # df.compute().to_csv(path+'prices_data.csv',mode='a')
 #
 
+
 @st.cache(suppress_st_warning=True,allow_output_mutation=True)
 def getpricingdata():
     # prices = pd.read_csv(path+'prices_data.csv')
@@ -103,7 +104,13 @@ def getpricingdata():
     prices['Time'] = pd.to_datetime(prices['Time'],errors='coerce')
     prices = prices.sort_values('Time',ascending=False)
     prices['Year'] = pd.DataFrame(prices['Time']).apply(lambda x: x.dt.year)
+    prices['Month'] = pd.DataFrame(prices['Time']).apply(lambda x: x.dt.month)
     prices['Time of Day'] = prices['Time'].dt.strftime('%H:%M')
+    periodnb = prices['Time of Day'].unique().tolist()
+    periodnb = periodnb[1:][::-1]
+    periodnb.insert(0,'00:00')
+    prices['Period Number'] = prices['Time of Day'].apply(lambda x:periodnb.index(x)+1)
+
     return prices
 
 
@@ -130,18 +137,49 @@ prices = filteryeartime(prices)
 
 ###### Filter prices ######
 
-regionlist = ['QLD1','SA1','TAS1','NSW1','VIC1']
+regionlist = ['All','QLD1','SA1','TAS1','NSW1','VIC1']
 
 region = st.selectbox('Select State',regionlist,0)
 
-regionfilter = prices[prices['State']==region]
+if region != 'All':
+    regionfilter = prices[prices['State']==region]
+else:
+    regionfilter = prices
 
-highlight = alt.selection(type='interval',bind='scales',encodings=['x','y'])
+st.subheader('Price distribution')
 
-fig = alt.Chart(regionfilter).mark_bar().encode(alt.X('Price:Q',scale=alt.Scale(domain=(-100,200)),bin=alt.BinParams(maxbins=2000)),alt.Y('count()'),color='State:N',tooltip=[
-      {"type": "quantitative", "field": "Price"},
-      {"type": "nominal", "field": "State"}]).add_selection(highlight)
-st.altair_chart(fig,use_container_width=True)
+if region == 'All':
+    highlight = alt.selection(type='interval',bind='scales',encodings=['x','y'])
+    fig = alt.Chart(regionfilter).mark_bar(opacity=0.7).encode(alt.X('Price:Q',scale=alt.Scale(domain=(-100,200)),bin=alt.BinParams(maxbins=2000)),alt.Y('count()',stack=None),color='State:N',tooltip=[
+          {"type": "quantitative", "field": "Price"}]).add_selection(highlight)
+    st.altair_chart(fig,use_container_width=True)
+else:
+    highlight = alt.selection(type='interval',bind='scales',encodings=['x','y'])
+    fig = alt.Chart(regionfilter).mark_bar(opacity=0.7).encode(alt.X('Price:Q',scale=alt.Scale(domain=(-100,200)),bin=alt.BinParams(maxbins=2000)),alt.Y('count()'),color='State:N',tooltip=[
+          {"type": "quantitative", "field": "Price"}]).add_selection(highlight)
+    st.altair_chart(fig,use_container_width=True)
+
+#Average prices per time
+
+st.subheader('Price distribution across daily time intervals')
+
+pricesbytime = regionfilter.groupby(by=['State','Period Number'])['Price'].mean()
+pricesbytime = pd.DataFrame(pricesbytime)
+pricesbytime.reset_index(inplace = True)
+
+if region =='All':
+    fig = alt.Chart(pricesbytime).mark_bar(opacity=0.7).encode(alt.X('Period Number:N',bin=alt.BinParams(maxbins=50)),alt.Y('Price:Q',scale=alt.Scale(domain=(0,200)),stack=None),color='State:N',tooltip=[
+          {"type": "quantitative", "field": "Price"},
+          {"type": "nominal", "field": "State"},
+          {"type": "nominal", "field": "Period Number"}]).add_selection(highlight)
+    st.altair_chart(fig,use_container_width=True)
+else:
+    fig = alt.Chart(pricesbytime).mark_bar(opacity=0.7).encode(alt.X('Period Number:N',bin=alt.BinParams(maxbins=50)),alt.Y('Price:Q',scale=alt.Scale(domain=(0,200))),color='State:N',tooltip=[
+          {"type": "quantitative", "field": "Price"},
+          {"type": "nominal", "field": "State"},
+          {"type": "nominal", "field": "Period Number"}]).add_selection(highlight)
+    st.altair_chart(fig,use_container_width=True)
+
 
 
 ###### End Filter prices ####
