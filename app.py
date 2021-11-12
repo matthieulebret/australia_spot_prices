@@ -113,8 +113,15 @@ def getpricingdata():
 
     return prices
 
-
 prices = getpricingdata()
+
+def convert_df(df):
+    return df.to_csv().encode('utf-8')
+
+csv = convert_df(prices)
+
+st.download_button(label = 'Download file as csv',data=csv,file_name='data_file.csv',mime='text/csv')
+
 
 st.markdown('Data source: '+'https://www.aemo.com.au/energy-systems/electricity/national-electricity-market-nem/data-nem/market-data-nemweb')
 
@@ -202,8 +209,6 @@ st.header('Price distribution')
 st.write(distrib)
 
 
-def convert_df(df):
-    return df.to_csv().encode('utf-8')
 
 csv = convert_df(distrib)
 
